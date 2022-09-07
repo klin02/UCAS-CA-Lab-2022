@@ -291,7 +291,8 @@ assign {ms_fw_vwe,ms_fw_dest} = ms_fw_bus;
 assign {ws_fw_vwe,ws_fw_dest} = ws_fw_bus;
 //exclude out inst which not use the addr
 assign raddr1_valid = ~inst_lu12i_w & ~inst_b & ~inst_bl;
-assign raddr2_valid =   ~inst_slli_w & ~inst_srli_w & ~inst_srai_w 
+assign raddr2_valid =   ~inst_lu12i_w 
+                        & ~inst_slli_w & ~inst_srli_w & ~inst_srai_w 
                         & ~inst_addi_w & ~inst_ld_w
                         & ~inst_jirl & ~inst_b & ~inst_bl ;
 
