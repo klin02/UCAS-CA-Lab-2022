@@ -12,6 +12,7 @@ module WB_stage(
 
 //to RF(ID)
         output [`WS_TO_RF_BUS_WD-1:0] ws_to_rf_bus,
+        
 //trace debug interface
         output [31:0] debug_wb_pc,
         output [ 3:0] debug_wb_rf_we,

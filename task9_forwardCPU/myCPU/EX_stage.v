@@ -4,12 +4,6 @@ module EX_stage(
         input   clk,
         input   reset,
 
-//overall
-        //output br_taken_cancel,
-
-//to IF
-        //output [31:0] real_PC,
-
 //from ID
         input   ds_to_es_valid,
         input [`DS_TO_ES_BUS_WD-1:0] ds_to_es_bus,

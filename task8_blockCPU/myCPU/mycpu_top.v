@@ -50,11 +50,7 @@ module mycpu_top(
 	wire [`ES_FW_BUS_WD-1 : 0]	es_fw_bus;	
 	wire [`MS_FW_BUS_WD-1 : 0]	ms_fw_bus;
 	wire [`WS_FW_BUS_WD-1 : 0]	ws_fw_bus;	
-	
-	//prediction data
-	// wire [`PRDT_BUS_WD-1 : 0] 	prdt_bus;
-	// wire br_taken_cancel;
-	// wire [31:0] real_PC;
+
 
     IF_stage fs(
         .clk            (clk),
@@ -64,7 +60,6 @@ module mycpu_top(
         .inst_sram_addr (inst_sram_addr),
         .inst_sram_wdata(inst_sram_wdata),
         .inst_sram_rdata(inst_sram_rdata),
-        //.br_taken_cancel(br_taken_cancel),
         .br_bus         (br_bus),
         .ds_allowin     (ds_allowin),
         .fs_to_ds_valid (fs_to_ds_valid),

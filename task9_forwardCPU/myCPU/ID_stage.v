@@ -4,9 +4,6 @@ module ID_stage(
         input   clk,
         input   reset,
 
-//overall
-        //input   br_taken_cancel,
-
 //from IF
         input   fs_to_ds_valid,
         input [`FS_TO_DS_BUS_WD-1:0] fs_to_ds_bus,
@@ -28,9 +25,6 @@ module ID_stage(
         input [`MS_FW_BUS_WD-1:0] ms_fw_bus,
         input [`WS_FW_BUS_WD-1:0] ws_fw_bus
 );
-        //signals for no prediction pipeline, it will be input later
-        wire    br_taken_cancel;
-        assign  br_taken_cancel = 1'b0;
         
         reg [`FS_TO_DS_BUS_WD-1:0] fs_to_ds_bus_tmp;
         wire [31:0] ds_pc;
@@ -122,16 +116,13 @@ module ID_stage(
         wire es_vload; //valid load
         wire es_fw_vwe; //valid we
         wire [4:0] es_fw_dest;
-        wire [31:0] es_fw_wdata;
-        //wire es_related; 
+        wire [31:0] es_fw_wdata; 
         wire ms_fw_vwe;
         wire [4:0] ms_fw_dest;
         wire [31:0] ms_fw_wdata;
-        //wire ms_related;
         wire ws_fw_vwe;
         wire [4:0] ws_fw_dest;
         wire [31:0] ws_fw_wdata;
-        //wire ws_related;
 //signals to save useless block
         wire raddr1_valid;
         wire raddr2_valid;
@@ -242,9 +233,6 @@ regfile u_regfile(
     .wdata  (rf_wdata )
     );
 
-// accomplished at the bottom
-// assign rj_value  = rf_rdata1;
-// assign rkd_value = rf_rdata2;
 
 assign rj_eq_rd = (rj_value == rkd_value);
 assign br_taken =     (inst_beq  &&  rj_eq_rd
@@ -273,8 +261,6 @@ always@(posedge clk)begin
                 ds_valid <= 1'b0; 
         else if(ds_allowin)
                 ds_valid <= fs_to_ds_valid;
-        else if(br_taken_cancel)
-                ds_valid <= 1'b0;
 end
 assign ds_ready_go = ~block;
 assign ds_allowin = ~ds_valid | (ds_ready_go & es_allowin);
@@ -300,24 +286,6 @@ assign raddr2_valid =   ~inst_lu12i_w
                         & ~inst_slli_w & ~inst_srli_w & ~inst_srai_w 
                         & ~inst_addi_w & ~inst_ld_w
                         & ~inst_jirl & ~inst_b & ~inst_bl ;
-
-// assign es_related = es_fw_vwe & (|es_fw_dest) & 
-//                     (
-//                         (raddr1_valid & (es_fw_dest == rf_raddr1)) | 
-//                         (raddr2_valid & (es_fw_dest == rf_raddr2)) 
-//                     );
-// assign ms_related = ms_fw_vwe & (|ms_fw_dest) & 
-//                     (
-//                         (raddr1_valid & (ms_fw_dest == rf_raddr1)) | 
-//                         (raddr2_valid & (ms_fw_dest == rf_raddr2)) 
-//                     );
-// assign ws_related = ws_fw_vwe & (|ws_fw_dest) & 
-//                     (
-//                         (raddr1_valid & (ws_fw_dest == rf_raddr1)) | 
-//                         (raddr2_valid & (ws_fw_dest == rf_raddr2)) 
-//                     );
-
-// assign block = es_related | ms_related | ws_related;
 
 assign rj_value =       ~(|rf_raddr1) ? 32'b0 :
                         es_fw_vwe & ~es_vload & (es_fw_dest == rf_raddr1) ? es_fw_wdata : //exclude load

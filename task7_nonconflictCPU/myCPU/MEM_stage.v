@@ -16,9 +16,6 @@ module MEM_stage(
         output  ms_to_ws_valid,
         output  [`MS_TO_WS_BUS_WD-1:0] ms_to_ws_bus,
 
-//by-path forwarding data: to ID
-        //output [`MS_FW_BUS_WD-1:0] ms_fw_bus,
-
 //data_sram interface
         input [31:0] data_sram_rdata
 );

@@ -11,10 +11,6 @@ module IF_stage(
         output [31:0] inst_sram_wdata,
         input  [31:0] inst_sram_rdata,
 
-//overall
-	//Signals show prediction fail
-        //input br_taken_cancel,
-
 //from ID
         //branch information from ID stage
         input  [`BR_BUS_WD - 1 : 0] br_bus,
@@ -25,14 +21,8 @@ module IF_stage(
         output fs_to_ds_valid,
         //data IF send to ID
         output [`FS_TO_DS_BUS_WD - 1 : 0] fs_to_ds_bus	
-	
-//from EX
-        //real pc from EX
-        //input [31:0] real_PC
+
 );
-        //signals for no prediction pipeline, it will be input later
-        wire    br_taken_cancel;
-        assign  br_taken_cancel = 1'b0;
 
         wire    to_fs_valid;
         
@@ -62,8 +52,6 @@ module IF_stage(
                         fs_valid <= 1'b0;
                 else if(fs_allowin)
                         fs_valid <= to_fs_valid;
-                else if(br_taken_cancel)
-                         fs_valid <= 1'b0;
         end
 
         assign  fs_allowin = ~fs_valid | (ds_allowin & fs_ready_go);
@@ -78,9 +66,7 @@ module IF_stage(
                         fs_pc <= nextpc;
         end
 
-        assign nextpc = 
-                        //br_taken_cancel ? real_PC : 
-                        br_taken        ? br_target:
+        assign nextpc = br_taken        ? br_target:
                         fs_pc + 32'h4;
 
 endmodule 

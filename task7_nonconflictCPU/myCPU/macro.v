@@ -7,7 +7,3 @@
 	`define MS_TO_WS_BUS_WD  70	//see detail in MEM_stage
 	
 	`define WS_TO_RF_BUS_WD	 38  	//1 wen + 5 addr + 32 data
-	
-	// `define EX_FW_BUS_WD	 39 	//1 load + 1 valid + 5 addr +32 data
-	// `define MEM_FW_BUS_WD	 40 	//1 load + 1 done + 1 valid + 5 addr +32 data
-	// `define WB_FW_BUS_WD	 38	//1 valid + 5 addr +32 data

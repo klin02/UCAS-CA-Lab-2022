@@ -4,9 +4,6 @@ module ID_stage(
         input   clk,
         input   reset,
 
-//overall
-        //input   br_taken_cancel,
-
 //from IF
         input   fs_to_ds_valid,
         input [`FS_TO_DS_BUS_WD-1:0] fs_to_ds_bus,
@@ -28,10 +25,7 @@ module ID_stage(
         input [`MS_FW_BUS_WD-1:0] ms_fw_bus,
         input [`WS_FW_BUS_WD-1:0] ws_fw_bus
 );
-        //signals for no prediction pipeline, it will be input later
-        wire    br_taken_cancel;
-        assign  br_taken_cancel = 1'b0;
-        
+
         reg [`FS_TO_DS_BUS_WD-1:0] fs_to_ds_bus_tmp;
         wire [31:0] ds_pc;
         wire [31:0] ds_inst;
@@ -268,8 +262,6 @@ always@(posedge clk)begin
                 ds_valid <= 1'b0; 
         else if(ds_allowin)
                 ds_valid <= fs_to_ds_valid;
-        else if(br_taken_cancel)
-                ds_valid <= 1'b0;
 end
 assign ds_ready_go = ~block;
 assign ds_allowin = ~ds_valid | (ds_ready_go & es_allowin);
