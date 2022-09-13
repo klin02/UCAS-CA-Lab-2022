@@ -1,3 +1,6 @@
+//if define, use IP. else use my mul/div
+	//`define USE_IP 1
+	
 //op WD
 	`define ALU_OP_WD 	 19
 	`define BLU_OP_WD 	 6

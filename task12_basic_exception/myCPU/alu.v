@@ -1,8 +1,10 @@
 `include "macro.v"
+
 module alu(
   input  clk,
   input  reset,
   input  es_valid,
+  output mul_out_valid,  //1 when IP
   output div_out_valid,  //div result is valid
   input  wire [`ALU_OP_WD-1:0] alu_op,
   input  wire [31:0] alu_src1,
@@ -65,8 +67,16 @@ wire [31:0] sll_result;
 wire [63:0] sr64_result;
 wire [31:0] sr_result;
 //pro calc
-wire [63:0] mul_s64_result;
-wire [63:0] mul_u64_result;
+`ifdef USE_IP
+    wire [63:0] mul_s64_result;
+    wire [63:0] mul_u64_result;
+`else
+    reg mul_valid_en;
+    reg mul_in_delay;
+    wire mul_signed;
+    wire [63:0] mul_64_result;
+    wire div_signed;
+`endif
 wire [31:0] mul_w_result;
 wire [31:0] mulh_w_result;
 wire [31:0] mulh_wu_result;
@@ -81,24 +91,28 @@ wire [31:0] adder_result;
 wire        adder_cout;
 
 //32-bit divisor
-reg tvalid_en;  //reset ->1  handshake ->0  dout_valid ->1
-//tvalid shared by dividend and divisor
-wire div_s_tvalid;    //signed
-wire div_u_tvalid;    //unsigned
-wire dividend_tready; //signed or unsigned
-wire dividend_s_tready;
-wire dividend_u_tready;
-wire divisor_tready;
-wire divisor_s_tready;
-wire divisor_u_tready;
-wire [31:0] dividend_tdata;
-wire [31:0] divisor_tdata;
-wire dout_tvalid;
-wire dout_s_tvalid;
-wire dout_u_tvalid;
-wire [63:0] dout_tdata;
-wire [63:0] dout_s_tdata;
-wire [63:0] dout_u_tdata;
+`ifdef USE_IP
+    reg tvalid_en;  //reset ->1  handshake ->0  dout_valid ->1
+    //tvalid shared by dividend and divisor
+    wire div_s_tvalid;    //signed
+    wire div_u_tvalid;    //unsigned
+    wire dividend_tready; //signed or unsigned
+    wire dividend_s_tready;
+    wire dividend_u_tready;
+    wire divisor_tready;
+    wire divisor_s_tready;
+    wire divisor_u_tready;
+    wire [31:0] dividend_tdata;
+    wire [31:0] divisor_tdata;
+    wire dout_tvalid;
+    wire dout_s_tvalid;
+    wire dout_u_tvalid;
+    wire [63:0] dout_tdata;
+    wire [63:0] dout_s_tdata;
+    wire [63:0] dout_u_tdata;
+`else
+    wire div_valid;
+`endif 
 
 assign adder_a   = alu_src1;
 assign adder_b   = (op_sub | op_slt | op_sltu) ? ~alu_src2 : alu_src2;  //src1 - src2 rj-rk
@@ -134,59 +148,98 @@ assign sr64_result = {{32{op_sra & alu_src1[31]}}, alu_src1[31:0]} >> alu_src2[4
 assign sr_result   = sr64_result[31:0];
 
 // MUL_W MULH_W MULH_WU result
-assign mul_s64_result = $signed(alu_src1) * $signed(alu_src2);
-assign mul_u64_result = alu_src1 * alu_src2;
-assign mul_w_result   = mul_s64_result[31:0];
-assign mulh_w_result  = mul_s64_result[63:32];
-assign mulh_wu_result = mul_u64_result[63:32];
+`ifdef USE_IP
+    assign mul_s64_result = $signed(alu_src1) * $signed(alu_src2);
+    assign mul_u64_result = alu_src1 * alu_src2;
+    assign mul_w_result   = mul_s64_result[31:0];
+    assign mulh_w_result  = mul_s64_result[63:32];
+    assign mulh_wu_result = mul_u64_result[63:32];
+    assign mul_out_valid = 1'b1;
+`else
+    assign mul_signed = op_mulh_w;
+    my_mul inst_mul(
+      .clk          (clk),
+      .reset        (reset),
+      .mul_signed   (mul_signed),
+      .x            (alu_src1),
+      .y            (alu_src2),
+      .result       (mul_64_result)
+    );
+    assign mul_w_result = mul_64_result[31:0];
+    assign mulh_w_result = mul_64_result[63:32];
+    assign mulh_wu_result = mul_64_result[63:32];
+
+    always @(posedge clk) begin
+      mul_in_delay <= es_valid & (op_mul_w | op_mulh_w | op_mulh_wu);
+    end
+    always @(posedge clk) begin
+        mul_valid_en <= ~mul_in_delay;
+    end
+    assign mul_out_valid = mul_in_delay & mul_valid_en;
+`endif
 
 // DIV_W(U) MOD_W(U) result
-always @(posedge clk) begin
-  if(reset)
-    tvalid_en <= 1'b1;
-  else if( (div_s_tvalid | div_u_tvalid) & (dividend_tready & divisor_tready) )
-    tvalid_en <= 1'b0;
-  else if( dout_tvalid)
-    tvalid_en <= 1'b1;
-end
-assign div_s_tvalid = es_valid & (op_div_w | op_mod_w ) & tvalid_en;
-assign div_u_tvalid = es_valid & (op_div_wu | op_mod_wu ) & tvalid_en;
-assign dividend_tready = ( (op_div_w | op_mod_w) & dividend_s_tready ) | 
-                        ( (op_div_wu | op_mod_wu) & dividend_u_tready ) ;
-assign divisor_tready = ( (op_div_w | op_mod_w) & divisor_s_tready ) | 
-                        ( (op_div_wu | op_mod_wu) & divisor_u_tready ) ;
-assign dividend_tdata = alu_src1;
-assign divisor_tdata = alu_src2;
-assign {div_result,mod_result} = dout_tdata;
-assign div_out_valid = dout_tvalid;
-assign dout_tvalid = dout_s_tvalid | dout_u_tvalid;
-assign dout_tdata = {64{dout_s_tvalid}} & dout_s_tdata | 
-                    {64{dout_u_tvalid}} & dout_u_tdata;
+`ifdef USE_IP
+    always @(posedge clk) begin
+      if(reset)
+        tvalid_en <= 1'b1;
+      else if( (div_s_tvalid | div_u_tvalid) & (dividend_tready & divisor_tready) )
+        tvalid_en <= 1'b0;
+      else if( dout_tvalid)
+        tvalid_en <= 1'b1;
+    end
+    assign div_s_tvalid = es_valid & (op_div_w | op_mod_w ) & tvalid_en;
+    assign div_u_tvalid = es_valid & (op_div_wu | op_mod_wu ) & tvalid_en;
+    assign dividend_tready = ( (op_div_w | op_mod_w) & dividend_s_tready ) | 
+                            ( (op_div_wu | op_mod_wu) & dividend_u_tready ) ;
+    assign divisor_tready = ( (op_div_w | op_mod_w) & divisor_s_tready ) | 
+                            ( (op_div_wu | op_mod_wu) & divisor_u_tready ) ;
+    assign dividend_tdata = alu_src1;
+    assign divisor_tdata = alu_src2;
+    assign {div_result,mod_result} = dout_tdata;
+    assign div_out_valid = dout_tvalid;
+    assign dout_tvalid = dout_s_tvalid | dout_u_tvalid;
+    assign dout_tdata = {64{dout_s_tvalid}} & dout_s_tdata | 
+                        {64{dout_u_tvalid}} & dout_u_tdata;
 
-ip_signed_div s_div(
-  .aclk(clk),
-  .s_axis_dividend_tvalid(div_s_tvalid),
-  .s_axis_dividend_tready(dividend_s_tready),
-  .s_axis_dividend_tdata(dividend_tdata),
-  .s_axis_divisor_tvalid(div_s_tvalid),
-  .s_axis_divisor_tready(divisor_s_tready),
-  .s_axis_divisor_tdata(divisor_tdata),
-  .m_axis_dout_tvalid(dout_s_tvalid),
-  .m_axis_dout_tdata(dout_s_tdata)
-);
+    ip_signed_div s_div(
+      .aclk(clk),
+      .s_axis_dividend_tvalid(div_s_tvalid),
+      .s_axis_dividend_tready(dividend_s_tready),
+      .s_axis_dividend_tdata(dividend_tdata),
+      .s_axis_divisor_tvalid(div_s_tvalid),
+      .s_axis_divisor_tready(divisor_s_tready),
+      .s_axis_divisor_tdata(divisor_tdata),
+      .m_axis_dout_tvalid(dout_s_tvalid),
+      .m_axis_dout_tdata(dout_s_tdata)
+    );
 
-ip_unsigned_div u_div(
-  .aclk(clk),
-  .s_axis_dividend_tvalid(div_u_tvalid),
-  .s_axis_dividend_tready(dividend_u_tready),
-  .s_axis_dividend_tdata(dividend_tdata),
-  .s_axis_divisor_tvalid(div_u_tvalid),
-  .s_axis_divisor_tready(divisor_u_tready),
-  .s_axis_divisor_tdata(divisor_tdata),
-  .m_axis_dout_tvalid(dout_u_tvalid),
-  .m_axis_dout_tdata(dout_u_tdata)
-);
-
+    ip_unsigned_div u_div(
+      .aclk(clk),
+      .s_axis_dividend_tvalid(div_u_tvalid),
+      .s_axis_dividend_tready(dividend_u_tready),
+      .s_axis_dividend_tdata(dividend_tdata),
+      .s_axis_divisor_tvalid(div_u_tvalid),
+      .s_axis_divisor_tready(divisor_u_tready),
+      .s_axis_divisor_tdata(divisor_tdata),
+      .m_axis_dout_tvalid(dout_u_tvalid),
+      .m_axis_dout_tdata(dout_u_tdata)
+    );
+`else
+    assign div_valid = es_valid & (op_div_w | op_mod_w | op_div_wu | op_mod_wu);
+    assign div_signed = op_div_w | op_mod_w;
+    my_div inst_div(
+      .clk      (clk),
+      .reset    (reset),
+      .div      (div_valid),
+      .div_signed(div_signed),
+      .x        (alu_src1),
+      .y        (alu_src2),
+      .s        (div_result),
+      .r        (mod_result),
+      .complete (div_out_valid)
+    );
+`endif 
 // final result mux
 assign alu_result = ({32{op_add|op_sub}} & add_sub_result)
                   | ({32{op_slt       }} & slt_result)

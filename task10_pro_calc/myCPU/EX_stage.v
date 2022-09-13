@@ -42,11 +42,14 @@ module EX_stage(
         wire [31:0] alu_result ;
         wire div_block;
         wire div_out_valid;
+        wire mul_block;
+        wire mul_out_valid;
 
 alu u_alu(
     .clk        (clk),
     .reset      (reset),
     .es_valid   (es_valid),
+    .mul_out_valid(mul_out_valid),
     .div_out_valid(div_out_valid),
     .alu_op     (alu_op    ),
     .alu_src1   (alu_src1  ),   
@@ -80,7 +83,8 @@ assign  { es_pc,
 
 //aluop 15-18 is div related
 assign div_block = es_valid & (|alu_op[18:15]) & ~div_out_valid;
-assign es_ready_go = ~div_block;
+assign mul_block = es_valid & (|alu_op[14:12]) & ~mul_out_valid;
+assign es_ready_go = ~div_block & ~mul_block;
 assign es_allowin = ~es_valid | (ms_allowin & es_ready_go);
 assign es_to_ms_valid = es_valid & es_ready_go;
 assign es_to_ms_bus = { es_pc,          //32
