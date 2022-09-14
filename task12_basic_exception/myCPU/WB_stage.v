@@ -124,7 +124,7 @@ assign rf_wdata = ws_csr ? csr_rvalue : final_result;
 assign ws_to_rf_bus = {rf_we,rf_waddr,rf_wdata}; //1+5+32
 //debug info
 assign debug_wb_pc = ws_pc;
-assign debug_wb_rf_we = {4{rf_we | csr_we}};
+assign debug_wb_rf_we = {4{rf_we}};
 assign debug_wb_rf_wnum = dest;
 assign debug_wb_rf_wdata = rf_wdata;
 
