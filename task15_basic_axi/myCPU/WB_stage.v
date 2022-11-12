@@ -146,7 +146,7 @@ always @(posedge clk)begin
                 ws_timer <= ws_timer +1'b1;
 end
 
-assign rf_we = gr_we & ws_valid & ~ws_expt ;
+assign rf_we = gr_we & ws_valid & ~expt_adef & ~expt_ale & ~expt_ine;
 assign rf_waddr = dest;
 assign rf_wdata = |expt_op[4:2] ? csr_rvalue :     //csr
                   expt_op[5]    ? ws_timer[63:32] : //rdcntvh
